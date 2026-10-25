@@ -41,7 +41,36 @@ int main(int argc, char *argv[]){
     }
 
 printf("Input file name: %s\n", fileName);
-    FILE *output = fopen("output.txt", "w");
+    char baseName[256];
+    int nameLength = strlen(fileName);
+    if (nameLength <= 4 || nameLength >= 256){
+    fprintf(stderr, "Invalid input file name.\n");
+    fclose(input);
+    return 1;
+}
+    for (int i = 0; i < nameLength - 4; i++){
+    baseName[i] = fileName[i];
+    }
+    baseName[nameLength - 4] = '\0';
+    printf("Base name: %s\n", baseName);
+   
+    char outputPath[4096];
+
+int pathLength = snprintf(
+    outputPath,
+    sizeof(outputPath),
+    "%s/%s_tayanc_karakaya_241ADB158.txt",
+    argv[2],
+    baseName);
+
+if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
+{
+    fprintf(stderr, "Output path is too long or could not be created.\n");
+    fclose(input);
+    return 1;
+}
+
+    FILE *output = fopen(outputPath, "w");
 
         if (output == NULL){
             fprintf(stderr, "Couldnt open output file.\n");
