@@ -40,7 +40,7 @@ int main(int argc, char *argv[]){
     fileName++;
     }
 
-printf("Input file name: %s\n", fileName);
+
     char baseName[256];
     int nameLength = strlen(fileName);
     if (nameLength <= 4 || nameLength >= 256){
@@ -52,7 +52,7 @@ printf("Input file name: %s\n", fileName);
     baseName[i] = fileName[i];
     }
     baseName[nameLength - 4] = '\0';
-    printf("Base name: %s\n", baseName);
+    
    
     char outputPath[4096];
 
@@ -83,16 +83,27 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
     long long result = 0;
     char operation = '+';
     int hasNumber = 0;
-    
+    long long position = 1;
+    long long errorPosition = 0;
+    int expectNumber = 1;
+
     while (character != EOF){
-        if (character >= '0' && character <= '9'){
-             long long number =0;
+    if (character >= '0' && character <= '9'){
+        if (expectNumber == 0)
+        {
+            errorPosition = position;
+            break;
+        }
+
+        long long number = 0;
              
              while (character >= '0' && character <= '9'){
                 number = number * 10 + (character - '0');
                 character = fgetc(input);
+                position++;
              }
-            
+            expectNumber = 0;
+
              if (operation == '+'){
                  result += number;
                  hasNumber = 1;
@@ -103,36 +114,63 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
                 hasNumber = 1;
                 }
         
-            }else{
-            if (character== '+'){
-                operation= '+';
-                
-            }
+          }else{
+         if (character == '+' || character == '-'){
+        if (expectNumber == 1)
+        {
+            errorPosition = position;
+            break;
+        }
+
+        operation = character;
+        expectNumber = 1;
+    }
             
-            else if (character== '-'){
-                operation = '-';
-            }
-                else if (character== '\n') 
-                {
-                    if (hasNumber== 1)
+                else if (character == '\n')
+{
+    if (hasNumber == 1 && expectNumber == 1)
+    {
+        errorPosition = position;
+        break;
+    }
+
+    if (hasNumber == 1)
                     {
                         fprintf(output, "%lld\n", result);
                         result =0;
                         operation ='+';
                         hasNumber =0;
+                        expectNumber = 1;
                     }
                     
                 }
                 
+                else if (character != ' ' && character != '\t'){
+                     errorPosition = position;
+                     break;}
             character = fgetc(input);
+            position++;
         }
         
         
-    }
-    if (hasNumber == 1)
-    {
-        fprintf(output, "%lld\n", result);
-    }
+        }
+        if (errorPosition == 0 && hasNumber == 1 && expectNumber == 1){
+    errorPosition = position;
+        }
+        
+        if (errorPosition != 0){
+        output = freopen(outputPath, "w", output);
+
+        if (output == NULL)
+        {
+            fprintf(stderr, "Could not reopen output file.\n");
+            fclose(input);
+            return 1;
+        }
+
+        fprintf(output, "ERROR:%lld\n", errorPosition);}
+        else if (hasNumber == 1) {
+        fprintf(output, "%lld\n", result); }
 
     fclose(input);
 
