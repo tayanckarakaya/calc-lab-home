@@ -6,21 +6,132 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
+void readNext(FILE *input, int *character, long long *position){
+    *character = fgetc(input);
+    (*position)++;
+}
+    long long readNumber(FILE *input, int *character, long long *position){
+    long long number = 0;
+
+    while (*character >= '0' && *character <= '9'){
+        number = number * 10 + (*character - '0');
+        readNext(input, character, position);
+    }
+
+    return number;
+}
+
+long long readExpression(FILE *input, int *character,
+                         long long *position, long long *errorPosition){
+    long long result = 0;
+    long long term = 0;
+    char operation = '+';
+    int expectNumber = 1;
+
+    while (*character != EOF &&
+           *character != '\n' &&
+           *character != ')')
+    {
+        if (*character == ' ' || *character == '\t'){
+            readNext(input, character, position);
+            continue;
+        }
+
+        if ((*character >= '0' && *character <= '9') ||
+            *character == '('){
+            if (expectNumber == 0){
+                *errorPosition = *position;
+                return 0;
+            }
+
+            long long numberStart = *position;
+            long long number;
+
+            if (*character == '('){
+                readNext(input, character, position);
+
+                number = readExpression(input, character,
+                                        position, errorPosition);
+
+                if (*errorPosition != 0)
+                {
+                    return 0;
+                }
+
+                if (*character != ')')
+                {
+                    *errorPosition = *position;
+                    return 0;
+                }
+
+                readNext(input, character, position);
+            }
+            else{
+                number = readNumber(input, character, position);
+            }
+
+            if (operation == '+'){
+                result += term;
+                term = number;
+            }
+            else if (operation == '-'){
+                result += term;
+                term = -number;
+            }
+            else if (operation == '*'){
+                term *= number;
+            }
+            else if (operation == '/'){
+                if (number == 0)
+                {
+                    *errorPosition = numberStart;
+                    return 0;
+                }
+
+                term /= number;
+            }
+
+            expectNumber = 0;
+            continue;
+        }
+
+        if (*character == '+' || *character == '-' ||
+            *character == '*' || *character == '/'){
+            if (expectNumber == 1){
+                *errorPosition = *position;
+                return 0;
+            }
+
+            operation = *character;
+            expectNumber = 1;
+            readNext(input, character, position);
+        
+        }else{
+            *errorPosition = *position;
+            return 0;
+        }
+    }
+
+    if (expectNumber == 1){
+        *errorPosition = *position;
+        return 0;
+    }
+
+    return result + term;
+}
 
 int main(int argc, char *argv[]){
-    if (argc != 4)
-    {
+    if (argc != 4){
         fprintf(stderr, "Usage: ./calc -o OUTPUT_DIR INPUT_FILE\n");
         return 1;
     }
-    if (strcmp(argv[1], "-o") != 0)
-    {
+    if (strcmp(argv[1], "-o") != 0){
         fprintf(stderr, "Expected -o option.\n");
         return 1;
     }
     
-    if (mkdir(argv[2], 0777) != 0 && errno != EEXIST)
-{
+    if (mkdir(argv[2], 0777) != 0 && errno != EEXIST){// Reuse an existing output directory; stop on other creation errors.
+
      fprintf(stderr, "Could not create output directory.\n");
      return 1;
 }
@@ -31,7 +142,7 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Couldnt open input file.\n");
         return 1;
     }
-    char *fileName = strrchr(argv[3], '/');
+    char *fileName = strrchr(argv[3], '/');// Exclude the original directory when constructing the output filename.
 
     if (fileName == NULL){
     fileName = argv[3];
@@ -55,7 +166,7 @@ int main(int argc, char *argv[]){
     
    
     char outputPath[4096];
-
+// Check its return value to avoid opening a truncated path.
 int pathLength = snprintf(
     outputPath,
     sizeof(outputPath),
@@ -63,8 +174,7 @@ int pathLength = snprintf(
     argv[2],
     baseName);
 
-if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
-{
+if (pathLength < 0 || pathLength >= (int)sizeof(outputPath)){
     fprintf(stderr, "Output path is too long or could not be created.\n");
     fclose(input);
     return 1;
@@ -78,115 +188,50 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
                 return 1;
 }
 
-    int character;
-    character = fgetc(input);
-    long long result = 0;
-    char operation = '+';
-    int hasNumber = 0;
+        int character = fgetc(input);
     long long position = 1;
     long long errorPosition = 0;
-    int expectNumber = 1;
-    long long term = 0;
 
-    while (character != EOF){
-    if (character >= '0' && character <= '9'){
-        if (expectNumber == 0)
-        {
-            errorPosition = position;
-            break;
-        }
-
-        long long number = 0;
-        long long numberStart = position;
-             
-             while (character >= '0' && character <= '9'){
-                number = number * 10 + (character - '0');
-                character = fgetc(input);
-                position++;}
-            expectNumber = 0;
-
-            if (operation == '+'){
-    result += term;
-    term = number;
-        }
-    else if (operation == '-'){
-    result += term;
-    term = -number;
-        }
-    else if (operation == '*'){
-    term *= number;
-        }
-    else if (operation == '/'){
-    if (number == 0) {
-        errorPosition = numberStart;
-        break;
-            }
-
-    term /= number;
-}
-
-hasNumber = 1;
-        
-          }else{
-         if (character == '+' || character == '-'||
-        character == '*' || character == '/'){
-        if (expectNumber == 1)
-        {
-            errorPosition = position;
-            break;
-        }
-
-        operation = character;
-        expectNumber = 1;
-    }
-            
-                else if (character == '\n')
-{
-    if (hasNumber == 1 && expectNumber == 1)
+    while (character != EOF)
     {
-        errorPosition = position;
-        break;
-    }
+        // Skip blank lines and whitespace between expressions.
+        if (character == ' ' || character == '\t' || character == '\n')
+        {
+            readNext(input, &character, &position);
+            continue;
+        }
 
-    if (hasNumber == 1)
-                    {
-                        fprintf(output, "%lld\n", result + term);
-                        result =0;
-                        operation ='+';
-                        hasNumber =0;
-                        expectNumber = 1;
-                        term = 0;
-                    }
-                    
-                }
-                
-                else if (character != ' ' && character != '\t'){
-                     errorPosition = position;
-                     break;}
-            character = fgetc(input);
-            position++;
-        }
-        
-        
-        }
-        if (errorPosition == 0 && hasNumber == 1 && expectNumber == 1){
-    errorPosition = position;
-        }
+        long long result = readExpression(input, &character, &position, &errorPosition);
 
         if (errorPosition != 0){
+            break;
+        }
+
+        // An unmatched closing parenthesis remains after the expression.
+        if (character == ')'){
+            errorPosition = position;
+            break;
+        }
+
+        fprintf(output, "%lld\n", result);
+
+        if (character == '\n'){
+            readNext(input, &character, &position);
+        }
+    }
+
+    if (errorPosition != 0){
+        // Remove earlier results so only the first error remains.
         output = freopen(outputPath, "w", output);
 
-        if (output == NULL)
-        {
+        if (output == NULL){
             fprintf(stderr, "Could not reopen output file.\n");
             fclose(input);
             return 1;
         }
 
-        fprintf(output, "ERROR:%lld\n", errorPosition);}
-        else if (hasNumber == 1) {
-        fprintf(output, "%lld\n", result + term);
-        }
+        fprintf(output, "ERROR:%lld\n", errorPosition);
+    }
     fclose(input);
 
     fclose(output);
