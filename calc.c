@@ -22,6 +22,84 @@ void readNext(FILE *input, int *character, long long *position){
 }
 
 long long readExpression(FILE *input, int *character,
+                         long long *position, long long *errorPosition);
+
+long long readPower(FILE *input, int *character,
+                    long long *position, long long *errorPosition){
+    long long number;
+
+    while (*character == ' ' || *character == '\t'){
+        readNext(input, character, position);
+    }
+
+    if (*character == '('){
+        readNext(input, character, position);
+        number = readExpression(input, character, position, errorPosition);
+
+        if (*errorPosition != 0){
+            return 0;
+        }
+        if (*character != ')'){
+            *errorPosition = *position;
+            return 0;
+        }
+        readNext(input, character, position);
+    }
+    else if (*character >= '0' && *character <= '9'){
+        number = readNumber(input, character, position);
+    }
+    else{
+        *errorPosition = *position;
+        return 0;
+    }
+
+    while (*character == ' ' || *character == '\t'){
+        readNext(input, character, position);
+    }
+
+    if (*character == '*'){
+        int next = fgetc(input);
+        if (next != EOF){
+            ungetc(next, input);
+        }
+
+        if (next == '*'){
+            readNext(input, character, position);
+            readNext(input, character, position);
+
+            while (*character == ' ' || *character == '\t'){
+                readNext(input, character, position);
+            }
+
+            long long exponentStart = *position;
+            long long exponent = readPower(input, character, position, errorPosition);
+
+            if (*errorPosition != 0){
+                return 0;
+            }
+            if (exponent < 0){
+                *errorPosition = exponentStart;
+                return 0;
+            }
+
+            long long answer = 1;
+            while (exponent > 0){
+                if (exponent % 2 == 1){
+                    answer *= number;
+                }
+                exponent /= 2;
+                if (exponent > 0){
+                    number *= number;
+                }
+            }
+            number = answer;
+        }
+    }
+
+    return number;
+}
+
+long long readExpression(FILE *input, int *character,
                          long long *position, long long *errorPosition){
     long long result = 0;
     long long term = 0;
@@ -47,27 +125,10 @@ long long readExpression(FILE *input, int *character,
             long long numberStart = *position;
             long long number;
 
-            if (*character == '('){
-                readNext(input, character, position);
+            number = readPower(input, character, position, errorPosition);
 
-                number = readExpression(input, character,
-                                        position, errorPosition);
-
-                if (*errorPosition != 0)
-                {
-                    return 0;
-                }
-
-                if (*character != ')')
-                {
-                    *errorPosition = *position;
-                    return 0;
-                }
-
-                readNext(input, character, position);
-            }
-            else{
-                number = readNumber(input, character, position);
+            if (*errorPosition != 0){
+         return 0;
             }
 
             if (operation == '+'){
@@ -200,6 +261,13 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath)){
             readNext(input, &character, &position);
             continue;
         }
+
+        if (character == '#'){
+    while (character != '\n' && character != EOF){
+        readNext(input, &character, &position);
+    }
+    continue;
+    }
 
         long long result = readExpression(input, &character, &position, &errorPosition);
 
