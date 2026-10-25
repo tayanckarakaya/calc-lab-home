@@ -86,6 +86,7 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
     long long position = 1;
     long long errorPosition = 0;
     int expectNumber = 1;
+    long long term = 0;
 
     while (character != EOF){
     if (character >= '0' && character <= '9'){
@@ -96,26 +97,39 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
         }
 
         long long number = 0;
+        long long numberStart = position;
              
              while (character >= '0' && character <= '9'){
                 number = number * 10 + (character - '0');
                 character = fgetc(input);
-                position++;
-             }
+                position++;}
             expectNumber = 0;
 
-             if (operation == '+'){
-                 result += number;
-                 hasNumber = 1;
-                }
-            
-                else if (operation == '-'){
-                result -= number;
-                hasNumber = 1;
-                }
+            if (operation == '+'){
+    result += term;
+    term = number;
+        }
+    else if (operation == '-'){
+    result += term;
+    term = -number;
+        }
+    else if (operation == '*'){
+    term *= number;
+        }
+    else if (operation == '/'){
+    if (number == 0) {
+        errorPosition = numberStart;
+        break;
+            }
+
+    term /= number;
+}
+
+hasNumber = 1;
         
           }else{
-         if (character == '+' || character == '-'){
+         if (character == '+' || character == '-'||
+        character == '*' || character == '/'){
         if (expectNumber == 1)
         {
             errorPosition = position;
@@ -136,11 +150,12 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
 
     if (hasNumber == 1)
                     {
-                        fprintf(output, "%lld\n", result);
+                        fprintf(output, "%lld\n", result + term);
                         result =0;
                         operation ='+';
                         hasNumber =0;
                         expectNumber = 1;
+                        term = 0;
                     }
                     
                 }
@@ -157,7 +172,7 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
         if (errorPosition == 0 && hasNumber == 1 && expectNumber == 1){
     errorPosition = position;
         }
-        
+
         if (errorPosition != 0){
         output = freopen(outputPath, "w", output);
 
@@ -170,8 +185,8 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath))
 
         fprintf(output, "ERROR:%lld\n", errorPosition);}
         else if (hasNumber == 1) {
-        fprintf(output, "%lld\n", result); }
-
+        fprintf(output, "%lld\n", result + term);
+        }
     fclose(input);
 
     fclose(output);
