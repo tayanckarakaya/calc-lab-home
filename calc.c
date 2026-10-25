@@ -1,7 +1,7 @@
 // Tayanc Karakaya 241ADB158
 // https://github.com/tayanckarakaya/calc-lab-home
 // Compile with: gcc -O2 -Wall -Wextra -std=c17 -o calc calc.c -lm
-// Resources used: <every AI tool, website and book you used; details in comments where you used them>
+// Resources used: https://share.gemini.google/5Jk0WP6yRlJr
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -21,10 +21,10 @@ void readNext(FILE *input, int *character, long long *position){
     return number;
 }
 
-long long readExpression(FILE *input, int *character,
+long long readExpression(FILE *input, int *character,//  I got help from ai
                          long long *position, long long *errorPosition);
 
-long long readPower(FILE *input, int *character,
+long long readPower(FILE *input, int *character,//// Read powers before multiplication and division to give ** higher precedence.I got help from ai
                     long long *position, long long *errorPosition){
     long long number;
 
@@ -72,7 +72,7 @@ long long readPower(FILE *input, int *character,
             }
 
             long long exponentStart = *position;
-            long long exponent = readPower(input, character, position, errorPosition);
+            long long exponent = readPower(input, character, position, errorPosition);//// Read the exponent recursively so 2**3**2 is calculated as 2**(3**2).
 
             if (*errorPosition != 0){
                 return 0;
@@ -143,7 +143,7 @@ long long readExpression(FILE *input, int *character,
                 term *= number;
             }
             else if (operation == '/'){
-                if (number == 0)
+                if (number == 0)//// Division by zero is reported at the start of the right operand.
                 {
                     *errorPosition = numberStart;
                     return 0;
@@ -250,7 +250,7 @@ if (pathLength < 0 || pathLength >= (int)sizeof(outputPath)){
 }
 
         int character = fgetc(input);
-    long long position = 1;
+    long long position = 1;//Positions start at 1. readNext will count all characters, including spaces and newlines.
     long long errorPosition = 0;
 
     while (character != EOF)
